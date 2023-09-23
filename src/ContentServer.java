@@ -1,14 +1,14 @@
-import org.json.JSONObject;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.PrintWriter;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.IOException;
 import java.net.Socket;
 
-public class ContentSer {
+public class ContentServer {
     public static void main(String[] args) {
         if (args.length < 2) {
-            System.out.println("Usage: java ContentSer <ServerName:Port> <FilePath>");
+            System.out.println("Usage: java ContentServer <ServerName:Port> <FilePath>");
             return;
         }
 
@@ -36,12 +36,14 @@ public class ContentSer {
              PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
              BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
 
-            JSONObject payload = JsonFormatter.format(filePath);
+            // Assuming JsonFormatter.format now returns JsonNode or its string representation
+            JsonNode payload = JsonFormatter.format(filePath);
 
             if (payload != null) {
+                out.println("PUT");  // Indicate that data is about to be sent
                 out.println(payload.toString());
 
-                // Read and display the OK response
+                // Read and display the response from the Aggregation Server
                 String response = in.readLine();
                 System.out.println("Received from Aggregation Server: " + response);
             }
@@ -51,36 +53,3 @@ public class ContentSer {
         }
     }
 }
-
-
-
-
-
-//import org.json.JSONObject;
-//import java.io.PrintWriter;
-//import java.io.BufferedReader;
-//import java.io.InputStreamReader;
-//import java.io.IOException;
-//import java.net.Socket;
-//
-//public class ContentSer {
-//    public static void main(String[] args) {
-//        try (Socket socket = new Socket("localhost", 8887);
-//             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-//             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
-//
-//            JSONObject payload = JsonFormatter.format("src/data.txt");
-//
-//            if (payload != null) {
-//                out.println(payload.toString());
-//
-//                // Read and display the OK response
-//                String response = in.readLine();
-//                System.out.println("Received from Aggregation Server: " + response);
-//            }
-//
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//    }
-//}

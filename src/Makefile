@@ -2,14 +2,11 @@
 JAVAC = javac
 JAVA = java
 CP = -cp
-CLASSPATH = $(shell echo "'.:/Weather Data/json.jar:/Weather Data/tyrus-standalone-client-1.9.jar:/Weather Data/json-20230618.jar'")
-# Change this to your actual JSON and Tyrus JAR paths
-JSON_JAR = "/Weather Data/json.jar"
-TYRUS_JAR = "/Weather Data/tyrus-standalone-client-1.9.jar"
-ORG_JSON_JAR = "/Weather Data/json-20230618.jar"
-#HOST = localhost
-#PORT = 8887
-FILEPATH = /Weather Data/src/data.txt
+#javac -cp "jackson/*" src/AggregationServer.java
+JSON_JAR = "lib/jackson/jackson-annotations-2.13.3.jar"
+TYRUS_JAR = "lib/jackson/jackson-core-2.13.3.jar"
+ORG_JSON_JAR = "lib/jackson/jackson-databind-2.13.3.jar"
+CLASSPATH = ".:lib/jackson/jackson-annotations-2.13.3.jar:lib/jackson/jackson-core-2.13.3.jar:lib/jackson/jackson-databind-2.13.3.jar"
 
 SRC_DIR = .
 BIN_DIR = ./bin
@@ -20,16 +17,16 @@ prepare:
 	mkdir -p $(BIN_DIR)
 
 compile: prepare
-	$(JAVAC) $(CP) $(CLASSPATH) -d $(BIN_DIR) $(SRC_DIR)/*.java
+	$(JAVAC) $(CP) "$(CLASSPATH)" -d $(BIN_DIR) $(SRC_DIR)/*.java
 
-runContentSer:
-	$(JAVA) $(CP) $(BIN_DIR):$(CLASSPATH) ContentSer "$(HOST):$(PORT)" "$(FILEPATH)"
+runContentServer:
+	$(JAVA) $(CP) $(BIN_DIR):$(JSON_JAR):$(TYRUS_JAR):$(ORG_JSON_JAR) ContentServer "$(HOST):$(PORT)" "$(FILEPATH)"
 
-runAggregationS:
-	$(JAVA) $(CP) $(BIN_DIR):$(JSON_JAR):$(TYRUS_JAR):$(ORG_JSON_JAR) AggregationS
+runAggregationServer:
+	$(JAVA) $(CP) $(BIN_DIR):$(JSON_JAR):$(TYRUS_JAR):$(ORG_JSON_JAR) AggregationServer
 
-runClient:
-	$(JAVA) $(CP) $(BIN_DIR):$(JSON_JAR):$(TYRUS_JAR):$(ORG_JSON_JAR) Client "$(HOST):$(PORT)" "$(FILEPATH)"
+runGETClient:
+	$(JAVA) $(CP) $(BIN_DIR):$(JSON_JAR):$(TYRUS_JAR):$(ORG_JSON_JAR) GETClient "$(HOST):$(PORT)" "$(FILEPATH)"
 
 clean:
 	rm -rf $(BIN_DIR)

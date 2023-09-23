@@ -1,14 +1,18 @@
-import org.json.JSONObject;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
 public class JsonFormatter {
 
-    public static JSONObject format(String filename) {
+    public static JsonNode format(String filename) {
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode json = mapper.createObjectNode();
+
         try {
             List<String> lines = Files.readAllLines(Paths.get(filename));
-            JSONObject json = new JSONObject();
 
             for (String line : lines) {
                 String[] keyValue = line.split(":");
