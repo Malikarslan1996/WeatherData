@@ -12,7 +12,7 @@ public class ContentServer {
             return;
         }
 
-        // Split server name and port from the first argument
+
         String[] serverInfo = args[0].split(":");
         if (serverInfo.length != 2) {
             System.out.println("Invalid server information. It should be in the format ServerName:Port");
@@ -28,22 +28,22 @@ public class ContentServer {
             return;
         }
 
-        // Read the file path from the second argument
+
         String filePath = args[1];
 
-        // Connect to the server and send payload
+
         try (Socket socket = new Socket(serverName, portNumber);
              PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
              BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
 
-            // Assuming JsonFormatter.format now returns JsonNode or its string representation
+
             JsonNode payload = JsonFormatter.format(filePath);
 
             if (payload != null) {
-                out.println("PUT");  // Indicate that data is about to be sent
+                out.println("PUT");
                 out.println(payload.toString());
 
-                // Read and display the response from the Aggregation Server
+
                 String response = in.readLine();
                 System.out.println("Received from Aggregation Server: " + response);
             }

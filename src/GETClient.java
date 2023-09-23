@@ -13,13 +13,12 @@ public class GETClient {
         String serverName;
         int portNumber;
 
-        // Extract server name and port from the first argument
         try {
             URL url = new URL(args[0].startsWith("http://") ? args[0] : "http://" + args[0]);
             serverName = url.getHost();
             portNumber = url.getPort();
 
-            if (portNumber == -1) {  // if port is not specified in the URL
+            if (portNumber == -1) {
                 System.out.println("Port number must be specified.");
                 return;
             }
@@ -39,7 +38,6 @@ public class GETClient {
             stationID = args[2];
         }
 
-        // Retry strategy
         int maxAttempts = 3;
 
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
@@ -91,7 +89,7 @@ public class GETClient {
                     System.out.println("Failed after " + maxAttempts + " attempts.");
                     e.printStackTrace();
                 } else {
-                    // Exponential backoff
+
                     try {
                         long backoffTime = (long) (Math.pow(2, attempt) * 1000);
                         TimeUnit.MILLISECONDS.sleep(backoffTime);
