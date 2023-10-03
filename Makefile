@@ -22,7 +22,7 @@ runAggregationServer:
 	$(JAVA) $(CP) $(BIN_DIR):"$(CLASSPATH)" AggregationServer
 
 runGETClient:
-	$(JAVA) $(CP) $(BIN_DIR):"$(CLASSPATH)" GETClient "$(HOST):$(PORT)" "$(FILEPATH)"
+	$(JAVA) $(CP) $(BIN_DIR):"$(CLASSPATH)" GETClient "$(HOST):$(PORT)" "$(STATION_ID)"
 
 clean:
 	rm -rf $(BIN_DIR)

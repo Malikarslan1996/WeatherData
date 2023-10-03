@@ -9,10 +9,11 @@ public class JsonFormatter {
 
     public static JsonNode format(String filename) {
         ObjectMapper mapper = new ObjectMapper();
-        ObjectNode json = mapper.createObjectNode();
+        ObjectNode root = mapper.createObjectNode();
 
         try {
             List<String> lines = Files.readAllLines(Paths.get(filename));
+            ObjectNode currentObject = null;
 
             for (String line : lines) {
                 String[] keyValue = line.split(":");
@@ -22,13 +23,19 @@ public class JsonFormatter {
                 }
                 String key = keyValue[0].trim();
                 String value = keyValue[1].trim();
-                if (isNumeric(value)) {
-                    json.put(key, Double.parseDouble(value));
-                } else {
-                    json.put(key, value);
+
+                if ("id".equalsIgnoreCase(key)) {
+                    currentObject = mapper.createObjectNode();
+                    root.set(value, currentObject);
+                } else if (currentObject != null) {
+                    if (isNumeric(value)) {
+                        currentObject.put(key, Double.parseDouble(value));
+                    } else {
+                        currentObject.put(key, value);
+                    }
                 }
             }
-            return json;
+            return root;
         } catch (Exception e) {
             e.printStackTrace();
             return null;
