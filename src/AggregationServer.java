@@ -13,17 +13,30 @@ import java.util.Set;
 import java.util.concurrent.*;
 
 public class AggregationServer {
+
     private static final LamportClock lamportClock = new LamportClock();
     private static final HashSet<String> connectedServers = new HashSet<>();
     private static final ConcurrentHashMap<String, Long> serverTimestamps = new ConcurrentHashMap<>();
-
     private static final ConcurrentHashMap<String, Set<String>> serverToIds = new ConcurrentHashMap<>();
-
     private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-
-    private static final int MAX_THREAD_COUNT = 10; // You can adjust this value as needed
+    private static final int MAX_THREAD_COUNT = 10;
     private static final ThreadPoolExecutor clientHandlerExecutor = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_THREAD_COUNT);
 
+    static class TimestampedData {
+        long timestamp;
+        JsonNode data;
+
+        TimestampedData(JsonNode data) {
+            this.data = data;
+            this.timestamp = System.currentTimeMillis();
+        }
+
+        boolean isOlderThan(long durationMillis) {
+            return System.currentTimeMillis() - this.timestamp > durationMillis;
+        }
+    }
+
+    private static final ConcurrentHashMap<String, TimestampedData> timestampedDataMap = new ConcurrentHashMap<>();
 
     private static boolean isValidJSON(String test) {
         try {
@@ -37,7 +50,6 @@ public class AggregationServer {
 
     public static void main(String[] args) throws IOException {
         int port = 4567;
-
         if (args.length == 1) {
             try {
                 port = Integer.parseInt(args[0]);
@@ -47,15 +59,13 @@ public class AggregationServer {
         }
 
         final String[] savedPayload = {"{}"};
-
-
         String dataPath = "data1.txt";
-
-
         String tempPath = "data1_temp.txt";
 
+        ObjectMapper objectMapper = new ObjectMapper(); // For JSON operations
 
         scheduler.scheduleAtFixedRate(() -> {
+
             long currentTime = System.currentTimeMillis();
             boolean isDataModified = false;
 
@@ -64,12 +74,9 @@ public class AggregationServer {
                     Map.Entry<String, Long> entry = iterator.next();
                     if (currentTime - entry.getValue() > 30_000) {
                         String serverIP = entry.getKey();
-
-                        // Remove data for IDs sent by this server
                         Set<String> idsForServer = serverToIds.getOrDefault(serverIP, new HashSet<>());
                         try {
-                            ObjectMapper mapper = new ObjectMapper();
-                            JsonNode rootNode = mapper.readTree(savedPayload[0]);
+                            JsonNode rootNode = objectMapper.readTree(savedPayload[0]);
                             for (String id : idsForServer) {
                                 if (rootNode.has(id)) {
                                     ((ObjectNode) rootNode).remove(id);
@@ -80,7 +87,6 @@ public class AggregationServer {
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
-
                         connectedServers.remove(serverIP);
                         iterator.remove();
                         serverToIds.remove(serverIP);
@@ -88,6 +94,26 @@ public class AggregationServer {
                 }
             }
 
+
+            ObjectNode combinedData = objectMapper.createObjectNode();
+            timestampedDataMap.entrySet().removeIf(entry -> {
+                TimestampedData data = entry.getValue();
+                if (data.isOlderThan(30_000)) {
+                    data.data.fieldNames().forEachRemaining(id -> {
+                        if (combinedData.has(id)) {
+                            combinedData.remove(id);
+                        }
+                    });
+                    return true;
+                } else {
+                    combinedData.setAll((ObjectNode) data.data);
+                    return false;
+                }
+            });
+
+            savedPayload[0] = combinedData.toString();
+
+            // Writing to file
             if (isDataModified) {
                 try (FileWriter file = new FileWriter(dataPath)) {
                     file.write(savedPayload[0]);
@@ -95,11 +121,10 @@ public class AggregationServer {
                     e.printStackTrace();
                 }
             }
+
         }, 0, 30, TimeUnit.SECONDS);
 
 
-
-        ObjectMapper objectMapper = new ObjectMapper(); // Object mapper for JSON parsing and generating
 
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             System.out.println("Server started on port: " + port);
@@ -120,14 +145,43 @@ public class AggregationServer {
                             return;
                         }
 
-                    if (inputLine.startsWith("GET / HTTP/1.1")) { // Handling HTTP request from a web browser
+                        if (inputLine.startsWith("GET /ID/")) {
+                            String requestedStationID = inputLine.split("/")[2].split(" ")[0];
+                            JsonNode rootNode = objectMapper.readTree(savedPayload[0]);
+                            JsonNode specificData = rootNode.get(requestedStationID);
+
+                            out.println("HTTP/1.1 200 OK");
+                            out.println("Content-Type: application/json");
+                            out.println();
+                            if (specificData != null) {
+                                out.println(specificData.toString());
+                            }
+                        }
+
+
+                        if (inputLine.startsWith("GET / HTTP/1.1")) {
                         out.println("HTTP/1.1 200 OK");
                         out.println("Content-Type: text/plain");
-                        out.println();  // blank line between headers and content, very important for HTTP protocol
+                        out.println();
                         out.println(savedPayload[0]);
-                        out.println("Clock: " + lamportClock.getTime());
-                    } else if (inputLine.startsWith("GET")) { // Handling Terminal request
-                        out.println(savedPayload[0]);
+                    }
+                    String[] requestParts = inputLine.split(" ");
+                    if (requestParts[0].equalsIgnoreCase("GET")) {
+                        if (inputLine.split(" ").length > 2 && !inputLine.split(" ")[1].equalsIgnoreCase("TIMESTAMP")) {
+                            if (requestParts.length > 2 && !requestParts[1].equalsIgnoreCase("TIMESTAMP")) {
+                                String requestedStationID = requestParts[1];
+                                JsonNode rootNode = objectMapper.readTree(savedPayload[0]);
+                                JsonNode specificData = rootNode.get(requestedStationID);
+
+                                if (specificData != null) {
+                                    out.println(specificData.toString());
+                                }
+                            } else {
+                                out.println(savedPayload[0]);
+                            }
+                        } else {
+                            out.println(savedPayload[0]);
+                        }
                         out.println("Clock: " + lamportClock.getTime());
                     } else if ("PUT".equalsIgnoreCase(inputLine)) {
                         String newDataPayload = in.readLine();
@@ -137,13 +191,14 @@ public class AggregationServer {
                             return;
                         }
 
+
                         if (!isValidJSON(newDataPayload)) {
                             out.println("500 - Internal Server Error");
                             return;
                         }
 
-                        JsonNode newRootNode = null;
-                        JsonNode existingRootNode = null;
+                        JsonNode newRootNode;
+                        JsonNode existingRootNode;
 
                         try {
                             newRootNode = objectMapper.readTree(newDataPayload);
@@ -152,19 +207,15 @@ public class AggregationServer {
                             out.println("500 - Internal Server Error");
                             return;
                         }
-
                         for (Iterator<String> it = newRootNode.fieldNames(); it.hasNext(); ) {
                             String id = it.next();
                             JsonNode newData = newRootNode.get(id);
-                            JsonNode existingData = existingRootNode.get(id);
-
-                            if (existingData == null ||
-                                    newData.get("local_date_time_full").asLong() > existingData.get("local_date_time_full").asLong()) {
-                                ((ObjectNode) existingRootNode).set(id, newData);
-                            }
+                            ((ObjectNode) existingRootNode).set(id, newData);
                         }
 
                         savedPayload[0] = existingRootNode.toString();
+                        TimestampedData newData = new TimestampedData(newRootNode);
+                        timestampedDataMap.put(serverIP, newData);
 
                         File mainFile = new File(dataPath);
                         boolean fileExistsBefore = mainFile.exists();
@@ -183,9 +234,7 @@ public class AggregationServer {
                             out.println("200 - OK");
                         }
 
-                        out.println("Clock: " + lamportClock.getTime());
                         synchronized (serverToIds) {
-                            // Track which IDs are sent by this server
                             Set<String> idsForServer = new HashSet<>();
                             for (Iterator<String> it = newRootNode.fieldNames(); it.hasNext(); ) {
                                 idsForServer.add(it.next());

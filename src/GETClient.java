@@ -40,19 +40,29 @@ public class GETClient {
 
                 lamportClock.tick();
 
-                if (stationID != null) {
+                if (stationID != null && !stationID.isEmpty()) {
+                    System.out.println("Sending request: " + "GET " + stationID + " TIMESTAMP " + lamportClock.getTime());
                     out.println("GET " + stationID + " TIMESTAMP " + lamportClock.getTime());
                 } else {
+                    System.out.println("Sending request: " + "GET TIMESTAMP " + lamportClock.getTime());
                     out.println("GET TIMESTAMP " + lamportClock.getTime());
                 }
 
                 String response = in.readLine();
-//                System.out.println("Received response: " + response);
+
                 if (isValidJSON(response)) {
                     JsonNode jsonObject = objectMapper.readTree(response);
-                    jsonObject.fieldNames().forEachRemaining(field -> {
-                        System.out.printf("%-30s : %s%n", field, jsonObject.get(field));
-                    });
+
+
+                    if (jsonObject.isObject()) {
+
+                        formatAndPrintData(jsonObject);
+                    } else if (jsonObject.isArray()) {
+
+                        for (final JsonNode objNode : jsonObject) {
+                            formatAndPrintData(objNode);
+                        }
+                    }
                 } else {
                     System.out.println("Received an invalid JSON response.");
                 }
@@ -69,6 +79,22 @@ public class GETClient {
         }
     }
 
+    private static void formatAndPrintData(JsonNode jsonObject) {
+        formatAndPrintData(jsonObject, "");
+    }
+
+    private static void formatAndPrintData(JsonNode jsonObject, String prefix) {
+        jsonObject.fieldNames().forEachRemaining(field -> {
+            JsonNode node = jsonObject.get(field);
+            if (node.isObject()) {
+                System.out.println(prefix + field + ":");
+                formatAndPrintData(node, prefix + "  ");
+            } else {
+                System.out.printf(prefix + "%-30s : %s%n", field, node);
+            }
+        });
+        System.out.println();
+    }
     private static boolean isValidJSON(String test) {
         try {
             objectMapper.readTree(test);

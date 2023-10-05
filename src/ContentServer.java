@@ -12,7 +12,6 @@ public class ContentServer {
             return;
         }
 
-
         String[] serverInfo = args[0].split(":");
         if (serverInfo.length != 2) {
             System.out.println("Invalid server information. It should be in the format ServerName:Port");
@@ -28,28 +27,34 @@ public class ContentServer {
             return;
         }
 
-
         String filePath = args[1];
 
+        while (true) {
+            try (Socket socket = new Socket(serverName, portNumber);
+                 PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
 
-        try (Socket socket = new Socket(serverName, portNumber);
-             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+                JsonNode payload = JsonFormatter.format(filePath);
 
+                if (payload != null) {
+                    out.println("PUT");
+                    out.println(payload.toString());
 
-            JsonNode payload = JsonFormatter.format(filePath);
+                    String response = in.readLine();
+                    System.out.println("Received from Aggregation Server: " + response);
+                }
 
-            if (payload != null) {
-                out.println("PUT");
-                out.println(payload.toString());
-
-
-                String response = in.readLine();
-                System.out.println("Received from Aggregation Server: " + response);
+            } catch (IOException e) {
+                e.printStackTrace();
             }
 
-        } catch (IOException e) {
-            e.printStackTrace();
+
+            try {
+                Thread.sleep(30000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
         }
     }
 }
