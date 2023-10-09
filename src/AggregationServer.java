@@ -113,7 +113,6 @@ public class AggregationServer {
 
             savedPayload[0] = combinedData.toString();
 
-            // Writing to file
             if (isDataModified) {
                 try (FileWriter file = new FileWriter(dataPath)) {
                     file.write(savedPayload[0]);
@@ -132,6 +131,7 @@ public class AggregationServer {
             while (true) {
                 final Socket clientSocket = serverSocket.accept();
                 clientHandlerExecutor.submit(() -> {
+
                     try (
                             PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
                             BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))
@@ -140,6 +140,15 @@ public class AggregationServer {
                         String inputLine = in.readLine();
                         String serverIP = clientSocket.getInetAddress().getHostAddress();
                         serverTimestamps.put(serverIP, System.currentTimeMillis());
+
+                        if (inputLine.startsWith("GET /clock HTTP/1.1")) {
+                            out.println("HTTP/1.1 200 OK\r");
+                            out.println("Content-Type: text/plain\r");
+                            out.println("\r");
+                            out.println(lamportClock.getTime());
+                            return;
+                        }
+
                         if (inputLine == null || inputLine.trim().isEmpty()) {
                             out.println("204 - No Content");
                             return;
@@ -160,11 +169,11 @@ public class AggregationServer {
 
 
                         if (inputLine.startsWith("GET / HTTP/1.1")) {
-                        out.println("HTTP/1.1 200 OK");
-                        out.println("Content-Type: text/plain");
-                        out.println();
-                        out.println(savedPayload[0]);
-                    }
+                            out.println("HTTP/1.1 200 OK\r");
+                            out.println("Content-Type: text/plain\r");
+                            out.println("\r");
+                            out.println(savedPayload[0]);
+                        }
                     String[] requestParts = inputLine.split(" ");
                     if (requestParts[0].equalsIgnoreCase("GET")) {
                         if (inputLine.split(" ").length > 2 && !inputLine.split(" ")[1].equalsIgnoreCase("TIMESTAMP")) {
@@ -244,6 +253,7 @@ public class AggregationServer {
                     } else {
                         out.println("400 - Bad Request");
                     }
+
                 }catch (IOException e) {
                         e.printStackTrace();
                     } finally {
@@ -253,6 +263,7 @@ public class AggregationServer {
                             e.printStackTrace();
                         }
                     }
+
                 });
             }
         }

@@ -29,3 +29,10 @@ runGETClient:
 
 clean:
 	rm -rf $(BIN_DIR)
+
+# Test targets
+prepare-test:
+	chmod +x tests.sh
+
+test: compile prepare-test
+	./tests.sh
