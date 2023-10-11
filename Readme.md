@@ -14,6 +14,7 @@
     - [GETClient](#getclient)
     - [LamportClock](#lamportclock)
     - [Modify Class](#modify-class)
+    - [Testing](#testing)
 5. [Conclusion](#conclusion)
 ## Introduction
 
@@ -51,6 +52,7 @@ The system's architecture is divided into the following main components:
 3. runAggregationServer: Initiates the AggregationServer.
 4. runModify: Executes the Modify utility.
 5. runGETClient: Starts the GETClient.
+6. test: Tests will run.
 
 ## Special Features
 
@@ -101,6 +103,10 @@ To run the code using the provided Makefile:
 6. **Run DataModifier**:
    ```bash
    make runModify
+   ```
+7. **Run Tests**:
+   ```bash
+   make test
    ```
 ### AggregationServer
 A server that aggregates data from various clients.
@@ -256,6 +262,47 @@ A utility designed to automatically modify specific content within the src/data.
 java Modify
 ```
 Upon execution, the program will periodically read, modify, and write content to src/data.txt every 30 seconds.
+
+### Testing
+The system includes a comprehensive set of tests, organized into different test cases to ensure its robustness and reliability. To run these tests, a test.sh script has been provided.
+
+**Test Procedure**
+
+**Dependencies:**
+
+Ensure you have curl and java installed, as they are required to run the tests.
+
+**Setting Variables:**
+- HOST: Set to "localhost"
+- PORT: 4567 (or any available port)
+- FILEPATH: Path to your test data (e.g., "test_data.txt")
+- FILEPATH1: Path to additional data file (e.g., "data1.txt")
+
+**Executing the Test Script:**
+
+Run the test.sh script using the command:
+```
+./test.sh or make test
+```
+**Test Cases**
+
+**HTTP Request Test:**
+
+This test involves starting the AggregationServer, sending data to it using the ContentServer, making an HTTP request to fetch the data, and checking the response.
+
+**Data Deletion After 30 Seconds:**
+
+The test starts the AggregationServer, waits for 30 seconds, and checks if the data in the specified file (data1.txt) has been deleted or if it's empty.
+
+**Lamport Clock:**
+
+This test starts the AggregationServer and makes an HTTP request to fetch the current Lamport Clock value.
+
+**Content Server Loading:**
+
+This test checks if the AggregationServer correctly receives and loads content when the ContentServer is initiated and sends data.
+
+At the end of these tests, you should see an "All test cases completed!" message, which indicates that all the test cases have been executed.
 
 ## Conclusion
 
